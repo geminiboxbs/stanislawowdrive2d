@@ -73,18 +73,13 @@
         function initTimer() {
             // Ustawienie docelowej daty: 1 kwietnia, godzina 16:00
             let targetDate = new Date();
-            targetDate.setMonth(4);
+            targetDate.setMonth(3);
             targetDate.setDate(1);
             targetDate.setHours(16);
             targetDate.setMinutes(0);
             targetDate.setSeconds(0);
             targetDate.setMilliseconds(0);
-
-            // Jeśli dzisiejsza data jest późniejsza niż 1 kwietnia danego roku, ustaw cel na kolejny rok
-            if (targetDate.getTime() < new Date().getTime()) {
-                targetDate.setFullYear(targetDate.getFullYear() + 1);
-            }
-
+            
             function updateTimer() {
                 const now = new Date().getTime();
                 const distance = targetDate.getTime() - now;
