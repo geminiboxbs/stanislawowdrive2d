@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stanislawow Drive 2D</title>
+    <title>Stanislawow Drive 2D (1.0.0)</title>
     <style>
         body {
             margin: 0;
@@ -30,6 +30,7 @@
         #countdown {
             display: flex;
             gap: 20px;
+            margin-bottom: 40px; /* Odstęp od przycisku pobierania */
         }
 
         .time-box {
@@ -55,13 +56,43 @@
             display: block;
         }
 
+        /* Style dla okienka / przycisku pobierania */
+        .download-btn {
+            background-color: #c3073f;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(195, 7, 63, 0.4);
+            transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .download-btn:hover {
+            background-color: #a00633;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(195, 7, 63, 0.6);
+        }
+
+        .download-btn .subtext {
+            font-size: 0.9rem;
+            font-weight: normal;
+            margin-top: 5px;
+            opacity: 0.9;
+        }
+
         /* Responsywność dla telefonów */
         @media (max-width: 600px) {
             h1 { font-size: 2rem; }
-            #countdown { flex-wrap: wrap; justify-content: center; gap: 10px; }
+            #countdown { flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 30px; }
             .time-box { padding: 15px 20px; min-width: 60px; }
             .number { font-size: 2.5rem; }
             .label { font-size: 0.9rem; }
+            .download-btn { font-size: 1.3rem; padding: 12px 30px; }
         }
     </style>
 </head>
@@ -87,6 +118,12 @@
             <span class="label">Sekund</span>
         </div>
     </div>
+
+    <!-- Okienko pobierania -->
+    <a href="https://www.mediafire.com/file/2t9styvzvm3ncmb/StanislawowDrive2D_1.0.apk/file" target="_blank" class="download-btn">
+        Pobierz gre!
+        <span class="subtext">(Tylko android!)</span>
+    </a>
 
     <script>
         function setupCountdown() {
