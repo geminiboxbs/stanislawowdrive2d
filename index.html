@@ -1,174 +1,1605 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8064812385722968"
-     crossorigin="anonymous"></script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stanislawow Drive 2D (1.0.0)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body {
+        body, html {
             margin: 0;
             padding: 0;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            touch-action: none; /* Prevent scrolling on mobile */
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+        #canvas-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            pointer-events: none;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 30;
+            pointer-events: none;
+        }
+        #main-menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            background: rgba(0,0,0,0.85);
             display: flex;
-            flex-direction: column;
+            align-items: center;
             justify-content: center;
-            align-items: center;
-            background-color: #1a1a1d; /* Ciemne, gamingowe tło */
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: center;
+            pointer-events: auto;
         }
-
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 40px;
-            color: #c3073f; /* Akcent kolorystyczny (czerwień/bordo) */
-            text-shadow: 2px 2px 10px rgba(195, 7, 63, 0.5);
-            letter-spacing: 2px;
+        .hud-box {
+            pointer-events: auto;
+            background: rgba(15, 15, 15, 0.9);
+            border: 2px solid #333;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         }
+        .hidden {
+            display: none !important;
+        }
+        .glowing-line {
+            filter: drop-shadow(0 0 6px #0ea5e9) drop-shadow(0 0 12px #0ea5e9);
+            animation: moveDash 1s linear infinite;
+        }
+        @keyframes moveDash {
+            to { stroke-dashoffset: -20; }
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #27272a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #52525b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #71717a; }
 
-        #countdown {
+        /* Mobile Controls */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            z-index: 40;
+            pointer-events: none;
+            display: none;
+        }
+        .mobile-controls-container {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            pointer-events: none;
             display: flex;
-            gap: 20px;
-            margin-bottom: 40px; /* Odstęp od przycisku pobierania */
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 20px;
+            z-index: 5000;
         }
-
-        .time-box {
-            background-color: #4e4e50;
-            padding: 20px 30px;
+        .mobile-btn {
+            pointer-events: auto;
+            user-select: none;
+            touch-action: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+        .steering-area {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .arrow-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.4);
             border-radius: 12px;
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
-            min-width: 80px;
+            font-size: 28px;
+        }
+        .arrow-btn:active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .pedals-area {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            align-items: flex-end;
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+        }
+        .drift-area {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            position: absolute;
+            right: 180px;
+            bottom: 20px;
+        }
+        .drift-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(168, 85, 247, 0.5);
+            border: 2px solid rgba(168, 85, 247, 0.8);
+            border-radius: 50%;
+            font-size: 12px;
+        }
+        .drift-btn:active {
+            background: rgba(168, 85, 247, 0.8);
+        }
+        .interact-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(34, 197, 94, 0.6);
+            border: 2px solid rgba(34, 197, 94, 0.8);
+            border-radius: 50%;
+            font-size: 14px;
+        }
+        .interact-btn:active {
+            background: rgba(34, 197, 94, 0.9);
+        }
+        .gas-pedal {
+            background: rgba(34, 197, 94, 0.5);
+            border: 2px solid rgba(34, 197, 94, 0.8);
+        }
+        .gas-pedal:active {
+            background: rgba(34, 197, 94, 0.8);
+        }
+        .brake-pedal {
+            background: rgba(239, 68, 68, 0.5);
+            border: 2px solid rgba(239, 68, 68, 0.8);
+        }
+        .brake-pedal:active {
+            background: rgba(239, 68, 68, 0.8);
+        }
+        .action-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .drift-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(168, 85, 247, 0.5);
+            border: 2px solid rgba(168, 85, 247, 0.8);
+            border-radius: 50%;
+            font-size: 14px;
+        }
+        .drift-btn:active {
+            background: rgba(168, 85, 247, 0.8);
+        }
+        .interact-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(34, 197, 94, 0.6);
+            border: 2px solid rgba(34, 197, 94, 0.8);
+            border-radius: 50%;
+            font-size: 16px;
+        }
+        .interact-btn:active {
+            background: rgba(34, 197, 94, 0.9);
         }
 
-        .number {
-            font-size: 3.5rem;
-            font-weight: bold;
-            display: block;
-        }
-
-        .label {
-            font-size: 1.2rem;
-            color: #d3d3d3;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 5px;
-            display: block;
-        }
-
-        /* Style dla okienka / przycisku pobierania */
-        .download-btn {
-            background-color: #c3073f;
-            color: #ffffff;
-            text-decoration: none;
-            padding: 15px 40px;
-            border-radius: 8px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(195, 7, 63, 0.4);
-            transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+        #orientation-warning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: red;
+            z-index: 9999;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px;
+        }
+        
+        @media screen and (orientation: portrait) {
+            #orientation-warning.mobile-device {
+                display: flex !important;
+            }
+        }
+        @media screen and (orientation: landscape) {
+            #orientation-warning {
+                display: none !important;
+            }
         }
 
-        .download-btn:hover {
-            background-color: #a00633;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(195, 7, 63, 0.6);
-        }
-
-        .download-btn .subtext {
-            font-size: 0.9rem;
-            font-weight: normal;
-            margin-top: 5px;
-            opacity: 0.9;
-        }
-
-        /* Responsywność dla telefonów */
-        @media (max-width: 600px) {
-            h1 { font-size: 2rem; }
-            #countdown { flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 30px; }
-            .time-box { padding: 15px 20px; min-width: 60px; }
-            .number { font-size: 2.5rem; }
-            .label { font-size: 0.9rem; }
-            .download-btn { font-size: 1.3rem; padding: 12px 30px; }
+        /* Adjust HUD for mobile (landscape and portrait) */
+        @media (max-width: 950px), (max-height: 500px) {
+            #btn-open-menu {
+                padding: 0.2rem 0.4rem;
+                font-size: 0.6rem;
+                top: 0.3rem;
+                left: 0.3rem;
+            }
+            #btn-open-jobs-ingame {
+                padding: 0.2rem 0.4rem;
+                font-size: 0.6rem;
+                top: 2.2rem;
+                left: 0.3rem;
+            }
+            #btn-open-ranking-ingame {
+                padding: 0.2rem 0.4rem;
+                font-size: 0.6rem;
+                top: 3.9rem;
+                left: 0.3rem;
+            }
+            .hud-status-box {
+                top: 0.3rem;
+                right: 0.3rem;
+                width: 120px;
+                padding: 0.3rem;
+            }
+            #speed-val {
+                font-size: 1.2rem;
+            }
+            .hud-status-box .text-sm {
+                font-size: 0.55rem;
+            }
+            .hud-status-box .text-xl {
+                font-size: 0.7rem;
+            }
+            #mission-status {
+                top: 4.5rem;
+                left: 0.3rem;
+                width: 120px;
+                padding: 0.3rem;
+            }
+            #mission-title {
+                font-size: 0.7rem;
+                margin-bottom: 0.1rem;
+            }
+            #mission-desc {
+                font-size: 0.55rem;
+            }
+            #interaction-prompt {
+                bottom: 10px;
+                padding: 0.3rem 0.6rem;
+            }
+            #interaction-text {
+                font-size: 0.75rem;
+            }
         }
     </style>
 </head>
-<body>
+<body class="font-sans antialiased text-white">
 
-    <h1>Tutaj bedzie: Stanislawow Drive 2D!</h1>
+<div id="orientation-warning" class="hidden">
+    <div>⚠️ PROSZĘ OBRÓCIĆ TELEFON ⚠️</div>
+    <div class="text-white text-lg mt-4">Gra wymaga trybu poziomego (Landscape)</div>
+</div>
 
-    <div id="countdown">
-        <div class="time-box">
-            <span class="number" id="days">00</span>
-            <span class="label">Dni</span>
+<!-- Ekran Głównego Menu -->
+<div id="main-menu-screen">
+    <!-- Widok: Logowanie -->
+    <div id="view-login" class="hidden bg-zinc-900 p-8 rounded-xl border border-zinc-700 shadow-2xl w-96 text-center">
+        <h2 class="text-2xl font-bold mb-6 text-white">LOGOWANIE</h2>
+        <div class="space-y-4 text-left mb-8">
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Nick kierowcy (np. Nazwa #1)</label>
+                <input type="text" id="player-nick" class="w-full bg-zinc-800 border border-zinc-600 rounded px-4 py-2 text-white focus:outline-none focus:border-red-500" placeholder="Wpisz nick..." value="Kierowca">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Hasło</label>
+                <input type="password" id="player-pass" class="w-full bg-zinc-800 border border-zinc-600 rounded px-4 py-2 text-white focus:outline-none focus:border-red-500" placeholder="Wpisz hasło...">
+            </div>
         </div>
-        <div class="time-box">
-            <span class="number" id="hours">00</span>
-            <span class="label">Godzin</span>
+        <button id="btn-do-login" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded transition duration-200 mb-3">
+            ZALOGUJ SIĘ
+        </button>
+        <p class="text-gray-400 text-sm mb-3">Nie masz konta?</p>
+        <button id="btn-goto-register" class="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-4 rounded transition duration-200">
+            ZAREJESTRUJ SIĘ
+        </button>
+    </div>
+
+    <!-- Widok: Rejestracja -->
+    <div id="view-register" class="hidden bg-zinc-900 p-8 rounded-xl border border-zinc-700 shadow-2xl w-96 text-center">
+        <h2 class="text-2xl font-bold mb-6 text-white">REJESTRACJA</h2>
+        <div class="space-y-4 text-left mb-8">
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Nick kierowcy (bez #)</label>
+                <input type="text" id="register-nick" class="w-full bg-zinc-800 border border-zinc-600 rounded px-4 py-2 text-white focus:outline-none focus:border-green-500" placeholder="Wpisz nick...">
+                <p class="text-xs text-gray-500 mt-1">System automatycznie doda numer #X</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-1">Hasło</label>
+                <input type="password" id="register-pass" class="w-full bg-zinc-800 border border-zinc-600 rounded px-4 py-2 text-white focus:outline-none focus:border-green-500" placeholder="Wpisz hasło...">
+            </div>
         </div>
-        <div class="time-box">
-            <span class="number" id="minutes">00</span>
-            <span class="label">Minut</span>
+        <button id="btn-do-register" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded transition duration-200 mb-3">
+            STWÓRZ KONTO
+        </button>
+        <button id="btn-back-from-register" class="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-4 rounded transition duration-200">
+            Wróć do logowania
+        </button>
+    </div>
+
+    <!-- Widok: Menu Główne -->
+    <div id="view-menu" class="hidden bg-zinc-900 p-8 rounded-xl border border-zinc-700 shadow-2xl w-96 text-center">
+        <h1 class="text-3xl font-bold mb-8 text-red-500 tracking-wider">STANISLAWOW<br><span class="text-xl text-white">DRIVE 2D</span></h1>
+        
+        <button id="btn-play" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-4 rounded mb-4 transition duration-200 text-lg shadow-lg shadow-red-900/50">
+            GRAJ / WRÓĆ
+        </button>
+        <button id="btn-goto-jobs" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition duration-200 mb-4">
+            WYBIERZ PRACĘ
+        </button>
+        <button id="btn-goto-garage" class="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-4 rounded transition duration-200 mb-4">
+            GARAŻ
+        </button>
+        <button id="btn-goto-ranking" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded transition duration-200 mb-4">
+            RANKING
+        </button>
+        <button id="btn-logout" class="w-full bg-zinc-800 hover:bg-zinc-700 text-gray-400 font-bold py-2 px-4 rounded transition duration-200 text-sm">
+            Wyloguj (Zmień Nick)
+        </button>
+    </div>
+
+    <!-- Widok: Praca -->
+    <div id="view-jobs" class="hidden bg-zinc-900 p-8 rounded-xl border border-zinc-700 shadow-2xl w-96 text-center">
+        <h2 class="text-2xl font-bold mb-2 text-white tracking-wide">ZATRUDNIENIE</h2>
+        <p class="text-gray-400 text-sm mb-6">Obecna praca: <span id="current-job-text" class="text-white font-bold">Dostawca Pizzy</span></p>
+        
+        <div class="space-y-4 mb-8">
+            <button onclick="setJob('pizza')" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-4 rounded border-2 border-transparent focus:border-white transition">
+                Dostawca Pizzy (Standard)
+            </button>
+            <button onclick="setJob('kurier')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded border-2 border-transparent focus:border-white transition">
+                Kurier (Poczta Polska)
+            </button>
         </div>
-        <div class="time-box">
-            <span class="number" id="seconds">00</span>
-            <span class="label">Sekund</span>
+
+        <button id="btn-back-from-jobs" class="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-4 rounded transition">
+            Wróć do menu
+        </button>
+    </div>
+
+    <!-- Widok: Garaż -->
+    <div id="view-garage" class="hidden bg-zinc-900 p-8 rounded-xl border border-zinc-700 shadow-2xl w-[900px] max-w-[95vw] text-center max-h-[90vh] overflow-y-auto">
+        <h2 class="text-3xl font-bold mb-2 text-white tracking-wide">GARAŻ</h2>
+        <p class="text-yellow-400 font-bold mb-6 text-lg">Twoje saldo: <span id="garage-money">0</span> PLN</p>
+        
+        <div id="garage-content" class="text-left">
+            <h3 class="text-xl font-bold text-white mb-2 border-b-2 border-zinc-600 pb-1">AUTA</h3>
+            <div id="garage-list-cars" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+                <!-- Generowane przez JS -->
+            </div>
+
+            <h3 class="text-xl font-bold text-white mb-2 border-b-2 border-zinc-600 pb-1">VANY</h3>
+            <div id="garage-list-vans" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+                <!-- Generowane przez JS -->
+            </div>
+        </div>
+
+        <button id="btn-back-from-garage" class="w-full md:w-64 mx-auto bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-4 rounded transition duration-200 block">
+            Wróć do menu
+        </button>
+    </div>
+</div>
+
+<!-- Widok: Ranking (Overlay) -->
+<div id="view-ranking" class="hidden bg-zinc-900 p-6 rounded-xl border border-zinc-700 shadow-2xl w-[600px] max-w-[95vw] text-center max-h-[90vh] overflow-y-auto" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100;">
+    <h2 class="text-3xl font-bold mb-4 text-white tracking-wide">RANKING</h2>
+    
+    <div class="flex justify-center gap-2 mb-4">
+        <button id="ranking-tab-money" class="px-4 py-2 bg-yellow-600 text-white font-bold rounded hover:bg-yellow-500 transition">
+            Najwięcej Kasy
+        </button>
+        <button id="ranking-tab-mileage" class="px-4 py-2 bg-zinc-700 text-white font-bold rounded hover:bg-zinc-600 transition">
+            Najwięcej Przebiegu
+        </button>
+    </div>
+    
+    <div id="ranking-content" class="text-left">
+        <table class="w-full text-left">
+            <thead class="bg-zinc-800">
+                <tr>
+                    <th class="px-4 py-2 text-yellow-400">#</th>
+                    <th class="px-4 py-2 text-white">Kierowca</th>
+                    <th class="px-4 py-2 text-yellow-400 text-right" id="ranking-value-header">Kasa (PLN)</th>
+                </tr>
+            </thead>
+            <tbody id="ranking-list">
+                <!-- Generowane przez JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <button id="btn-back-from-ranking" class="w-full md:w-64 mx-auto bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-4 rounded transition duration-200 block mt-4">
+        Wróć
+    </button>
+</div>
+
+<!-- UI Gry -->
+<div id="ui-layer" class="hidden">
+    <!-- Przycisk Menu -->
+    <button id="btn-open-menu" class="absolute top-4 left-4 hud-box rounded-lg py-3 px-6 text-white font-bold hover:bg-zinc-800 transition shadow-lg border border-zinc-600 tracking-wider">
+        MENU [M]
+    </button>
+
+    <!-- Przycisk Pracy -->
+    <button id="btn-open-jobs-ingame" class="absolute top-20 left-4 hud-box rounded-lg py-2 px-6 text-white font-bold hover:bg-zinc-800 transition shadow-lg border border-blue-600 tracking-wider text-sm text-blue-400">
+        PRACA [R]
+    </button>
+
+    <!-- Przycisk Rankingu -->
+    <button id="btn-open-ranking-ingame" class="absolute top-36 left-4 hud-box rounded-lg py-2 px-6 text-white font-bold hover:bg-zinc-800 transition shadow-lg border border-yellow-600 tracking-wider text-sm text-yellow-400">
+        RANKING [T]
+    </button>
+
+    <!-- Licznik -->
+    <div class="absolute top-4 right-4 hud-box hud-status-box rounded-lg p-4 w-64 flex flex-col items-end">
+        <div class="text-right w-full flex justify-between items-baseline mb-2">
+            <span id="speed-val" class="text-5xl font-mono font-bold text-red-500">0</span>
+            <span class="text-xl font-bold text-gray-400">km/h</span>
+        </div>
+        <!-- Pasek Prędkości -->
+        <div class="w-full h-2 bg-gray-700 rounded overflow-hidden">
+            <div id="speed-bar" class="h-full bg-blue-500" style="width: 0%"></div>
+        </div>
+        <!-- Detale Gracza -->
+        <div class="mt-4 text-sm text-gray-300 w-full flex justify-between border-b border-gray-700 pb-2 mb-2">
+            <span>Kierowca:</span>
+            <span id="ui-nick" class="font-bold text-white"></span>
+        </div>
+        <div class="text-sm text-gray-300 w-full flex justify-between mb-1">
+            <span>Przebieg:</span>
+            <span id="ui-distance" class="font-bold text-green-400">0.00 km</span>
+        </div>
+        <div class="text-sm text-gray-300 w-full flex justify-between">
+            <span>Kasa:</span>
+            <span id="ui-money" class="font-bold text-yellow-400">0 PLN</span>
         </div>
     </div>
 
-    <!-- Okienko pobierania -->
-    <a href="https://www.mediafire.com/file/2t9styvzvm3ncmb/StanislawowDrive2D_1.0.apk/file" target="_blank" class="download-btn">
-        Pobierz gre!
-        <span class="subtext">(Tylko android!)</span>
-    </a>
+    <!-- Aktywna Misja -->
+    <div id="mission-status" class="absolute top-36 left-4 hud-box rounded-lg p-4 w-64 hidden border-l-4 border-blue-500 mt-2">
+        <div id="mission-title" class="text-lg font-bold text-blue-400 mb-1">Dostawa</div>
+        <div id="mission-desc" class="text-sm text-gray-300">Jedź do klienta!</div>
+    </div>
 
-    <script>
-        function setupCountdown() {
-            const now = new Date();
-            let currentYear = now.getFullYear();
-            
-            // Miesiące w JS są liczone od 0 (styczeń=0, luty=1, marzec=2, kwiecień=3)
-            // Ustawiamy na 1 kwietnia, godzina 17:00:00
-            let targetDate = new Date(currentYear, 3, 1, 17, 4, 0).getTime();
+    <!-- Prompt interakcji -->
+    <div id="interaction-prompt" class="absolute bottom-12 left-1/2 transform -translate-x-1/2 hud-box rounded-lg p-4 hidden border-t-4 border-orange-500 text-center">
+        <span id="interaction-text" class="text-xl font-bold text-white">Naciśnij [E] aby odebrać</span>
+    </div>
+</div>
 
-            // Jeśli 1 kwietnia 15:00 w tym roku już minął, ustawiamy na przyszły rok
-            if (now.getTime() > targetDate) {
-                targetDate = new Date(currentYear + 1, 3, 1, 15, 0, 0).getTime();
+<!-- Mobile Controls -->
+<div id="mobile-controls">
+    <div class="mobile-controls-container">
+        <div class="steering-area">
+            <div class="mobile-btn arrow-btn" id="btn-left"><</div>
+            <div class="mobile-btn arrow-btn" id="btn-right">></div>
+        </div>
+        <div class="drift-area">
+            <div class="mobile-btn drift-btn" id="btn-drift">DRIFT</div>
+            <div class="mobile-btn interact-btn hidden" id="btn-interact">OK</div>
+        </div>
+        <div class="pedals-area">
+            <div class="mobile-btn pedal-btn gas-pedal" id="btn-gas">GAZ</div>
+            <div class="mobile-btn pedal-btn brake-pedal" id="btn-brake">HAM</div>
+        </div>
+    </div>
+</div>
+
+<!-- Kontenery na Mapę i Render -->
+<div id="map"></div>
+<canvas id="canvas-layer"></canvas>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Firebase SDK -->
+<script type="importmap">
+  {
+    "imports": {
+      "firebase/app": "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js",
+      "firebase/database": "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js"
+    }
+  }
+</script>
+<script type="module">
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyA3QqcmaPAIydi9IAVJxaUgcf0N-sjcso0",
+  authDomain: "stanislawowdrive2d.firebaseapp.com",
+  databaseURL: "https://stanislawowdrive2d-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "stanislawowdrive2d",
+  storageBucket: "stanislawowdrive2d.firebasestorage.app",
+  messagingSenderId: "151308124902",
+  appId: "1:151308124902:web:566e2a7373bfc6bef1f127"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+window.firebaseApp = app;
+
+import { getDatabase, ref, get, set, update, child } from "firebase/database";
+window.firebaseDb = getDatabase(app);
+window.fbRef = ref;
+window.fbGet = get;
+window.fbSet = set;
+window.fbUpdate = update;
+window.fbChild = child;
+</script>
+
+<!-- Skrypt Główny -->
+<script>
+// ==========================================
+// DANE AUT I ZARZĄDZANIE PROFILEM
+// ==========================================
+const carDefs = {
+    'seicento': { name: 'Fiat Seicento', maxSpeed: 38.8, accel: 6.0, price: 0, kmh: 140, hp: 39, colorMain: '#dc2626', colorRoof: '#991b1b', img: 'https://i.imgur.com/ZgSlrqb.png', category: 'auto' },
+    'matiz': { name: 'Chevrolet Matiz 1.0 SE', maxSpeed: 44.4, accel: 8.0, price: 4000, kmh: 160, hp: 67, colorMain: '#838750', colorRoof: '#1e40af', img: 'https://i.imgur.com/9kWDOrN.png', category: 'auto' },
+    'astra': { name: 'Opel Astra K 1.4 Turbo', maxSpeed: 56.9, accel: 12.0, price: 35000, kmh: 205, hp: 125, colorMain: '#f70000', colorRoof: '#27272a', img: 'https://i.imgur.com/kuc6irj.png', category: 'auto' },
+    'focus': { name: 'Ford Focus 1.8 Style+', maxSpeed: 54.1, accel: 11.0, price: 18000, kmh: 195, hp: 125, colorMain: '#0ea5e9', colorRoof: '#0284c7', img: 'https://i.imgur.com/YPGxNwb.png', category: 'auto' },
+    'caddy': { name: 'Volkswagen CADDY', maxSpeed: 41.1, accel: 8.5, price: 12000, kmh: 148, hp: 69, colorMain: '#e5e7eb', colorRoof: '#d1d5db', img: 'https://i.imgur.com/9wIchOu.png', category: 'van' },
+    't5': { name: 'Volkswagen T5 2009', maxSpeed: 44.4, accel: 9.0, price: 23000, kmh: 160, hp: 102, colorMain: '#3b82f6', colorRoof: '#1d4ed8', img: 'https://i.imgur.com/bG4xYxZ.png', category: 'van' }
+};
+
+let myNick = "Kierowca";
+let myCarType = 'seicento';
+let ownedCars = ['seicento'];
+let myMoney = 0;
+let myJob = 'pizza';
+let gameActive = false;
+
+// Car object - defined early to avoid reference errors
+let car = {
+    lat: 52.290128, lng: 21.547967,
+    angle: 0, moveAngle: 0, speed: 0,
+    maxSpeed: 38.8, accel: 6.0, brake: 15,
+    isDrifting: false, distanceMeters: 0
+};
+
+// Mobile Detection
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+if (isMobile) {
+    document.getElementById('orientation-warning').classList.add('mobile-device');
+}
+
+window.saveToFirebase = function() {
+    if(!myNick) return;
+    let dbKey = myNick.replace('#', '_');
+    if(window.fbUpdate && window.firebaseDb) {
+        window.fbUpdate(window.fbRef(window.firebaseDb, 'users/' + dbKey), {
+            money: myMoney,
+            mileage: car.distanceMeters,
+            ownedCars: JSON.stringify(ownedCars),
+            currentCar: myCarType
+        }).catch(e => console.log('Firebase save error', e));
+    }
+};
+
+setInterval(() => {
+    if(gameActive) window.saveToFirebase();
+}, 5000);
+
+async function loadPlayerProfile() {
+    try {
+        let dbKey = myNick.replace('#', '_');
+        let userRef = window.fbRef(window.firebaseDb, 'users/' + dbKey);
+        let snap = await window.fbGet(userRef);
+        if(snap.exists()) {
+            let data = snap.val();
+            myMoney = data.money || 0;
+            car.distanceMeters = data.mileage || 0;
+            if(data.ownedCars) {
+                try { ownedCars = JSON.parse(data.ownedCars); } catch(e) { ownedCars = ['seicento']; }
             }
+            if(data.currentCar && carDefs[data.currentCar] && ownedCars.includes(data.currentCar)) {
+                myCarType = data.currentCar;
+            }
+            localStorage.setItem('SD2D_money_' + myNick, myMoney);
+            localStorage.setItem('SD2D_mileage_' + myNick, car.distanceMeters);
+            localStorage.setItem('SD2D_owned_' + myNick, JSON.stringify(ownedCars));
+            localStorage.setItem('SD2D_car_' + myNick, myCarType);
+        } else {
+            let savedMoney = localStorage.getItem('SD2D_money_' + myNick);
+            myMoney = savedMoney ? parseInt(savedMoney) : 0;
+            let savedDistance = localStorage.getItem('SD2D_mileage_' + myNick);
+            car.distanceMeters = savedDistance ? parseFloat(savedDistance) : 0;
+        }
+    } catch(e) {
+        console.error("Firebase load error", e);
+        let savedMoney = localStorage.getItem('SD2D_money_' + myNick);
+        myMoney = savedMoney ? parseInt(savedMoney) : 0;
+        let savedDistance = localStorage.getItem('SD2D_mileage_' + myNick);
+        car.distanceMeters = savedDistance ? parseFloat(savedDistance) : 0;
+    }
 
-            // Aktualizacja odliczania co 1 sekundę
-            const timer = setInterval(function() {
-                const currentTime = new Date().getTime();
-                const distance = targetDate - currentTime;
+    document.getElementById('ui-money').innerText = myMoney + ' PLN';
 
-                // Obliczenia matematyczne dla czasu
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    let savedOwned = localStorage.getItem('SD2D_owned_' + myNick);
+    if (savedOwned) {
+        try { ownedCars = JSON.parse(savedOwned); } catch(e) { ownedCars = ['seicento']; }
+    } else {
+        ownedCars = ['seicento'];
+    }
 
-                // Wstawianie wyników do HTML z dodaniem zera z przodu dla cyfr < 10
-                document.getElementById("days").innerText = days;
-                document.getElementById("hours").innerText = hours < 10 ? "0" + hours : hours;
-                document.getElementById("minutes").innerText = minutes < 10 ? "0" + minutes : minutes;
-                document.getElementById("seconds").innerText = seconds < 10 ? "0" + seconds : seconds;
+    let savedCar = localStorage.getItem('SD2D_car_' + myNick);
+    if (savedCar && carDefs[savedCar] && ownedCars.includes(savedCar)) {
+        myCarType = savedCar;
+    } else {
+        myCarType = 'seicento';
+    }
 
-                // Co się stanie, gdy odliczanie się skończy
-                if (distance < 0) {
-                    clearInterval(timer);
-                    document.getElementById("countdown").innerHTML = "<h2 style='color:#4CAF50;'>Gra jest już dostępna!</h2>";
-                }
-            }, 1000);
+    let savedJob = localStorage.getItem('SD2D_job_' + myNick);
+    if(savedJob === 'kurier' || savedJob === 'pizza') {
+        myJob = savedJob;
+    } else {
+        myJob = 'pizza';
+    }
+
+    document.getElementById('ui-nick').innerText = myNick;
+    updateJobUI();
+}
+
+function updateJobUI() {
+    document.getElementById('current-job-text').innerText = (myJob === 'kurier') ? 'Kurier' : 'Dostawca Pizzy';
+}
+
+window.setJob = function(jobName) {
+    myJob = jobName;
+    localStorage.setItem('SD2D_job_' + myNick, jobName);
+    updateJobUI();
+    if (missionActive) finishMission(true);
+    alert("Praca zmieniona na: " + (jobName === 'kurier' ? 'Kurier' : 'Dostawca Pizzy'));
+};
+
+window.selectCar = function(id) {
+    myCarType = id;
+    localStorage.setItem('SD2D_car_' + myNick, id);
+    let selectedDef = carDefs[myCarType] || carDefs['seicento'];
+    car.maxSpeed = selectedDef.maxSpeed;
+    car.accel = selectedDef.accel;
+    renderGarage();
+    window.saveToFirebase();
+};
+
+window.buyCar = function(id) {
+    let c = carDefs[id];
+    if (myMoney >= c.price) {
+        myMoney -= c.price;
+        localStorage.setItem('SD2D_money_' + myNick, myMoney);
+        ownedCars.push(id);
+        localStorage.setItem('SD2D_owned_' + myNick, JSON.stringify(ownedCars));
+        selectCar(id);
+        document.getElementById('ui-money').innerText = myMoney + ' PLN';
+        window.saveToFirebase();
+    } else {
+        alert("Nie stać Cię! Pracuj aby zarobić.");
+    }
+};
+
+function renderGarage() {
+    document.getElementById('garage-money').innerText = myMoney;
+    const containerCars = document.getElementById('garage-list-cars');
+    const containerVans = document.getElementById('garage-list-vans');
+    containerCars.innerHTML = '';
+    containerVans.innerHTML = '';
+
+    for (let id in carDefs) {
+        let c = carDefs[id];
+        let isOwned = ownedCars.includes(id);
+        let isCurrent = (myCarType === id);
+        
+        let btnHTML = '';
+        if (isCurrent) {
+            btnHTML = `<button disabled class="w-full bg-green-600 border border-green-500 text-white font-bold py-2 px-2 rounded opacity-80 cursor-not-allowed uppercase text-sm">Wybrano</button>`;
+        } else if (isOwned) {
+            btnHTML = `<button onclick="selectCar('${id}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-2 rounded uppercase text-sm">Wybierz</button>`;
+        } else {
+            let canAfford = myMoney >= c.price;
+            let btnClass = canAfford ? 'bg-orange-500 hover:bg-orange-400' : 'bg-zinc-700 opacity-50 cursor-not-allowed';
+            btnHTML = `<button onclick="buyCar('${id}')" ${canAfford ? '' : 'disabled'} class="w-full ${btnClass} text-white font-bold py-2 px-2 rounded uppercase text-sm">Kup: ${c.price} PLN</button>`;
         }
 
-        // Uruchomienie funkcji
-        setupCountdown();
-    </script>
+        let badge = c.category === 'van' ? '<span class="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">VAN</span>' : '<span class="absolute top-2 right-2 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">AUTO</span>';
 
+        let card = document.createElement('div');
+        card.className = "bg-zinc-800 border border-zinc-600 rounded-lg overflow-hidden flex flex-col hover:border-zinc-400 transition shadow-xl relative";
+        let carImage = c.img ? `<img src="${c.img}" alt="${c.name}" class="object-cover w-full h-full opacity-90 transition group-hover:opacity-100 group-hover:scale-105 duration-300">` : `<div class="w-full h-full flex items-center justify-center text-zinc-600">Brak foto</div>`;
+        
+        card.innerHTML = `
+            ${badge}
+            <div class="h-36 bg-zinc-900 w-full flex items-center justify-center overflow-hidden border-b border-zinc-700 group cursor-pointer relative">
+                ${carImage}
+                <div class="absolute bottom-0 w-full h-1/2 bg-gradient-to-t from-zinc-900 to-transparent"></div>
+            </div>
+            <div class="p-5 flex-grow flex flex-col justify-between relative z-10">
+                <div class="mb-4">
+                    <h3 class="font-bold text-white text-lg leading-tight mb-3">${c.name}</h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="bg-zinc-900 rounded p-2 text-center border border-zinc-700">
+                            <span class="block text-gray-400 text-xs uppercase mb-1">Prędkość</span>
+                            <span class="font-mono font-bold text-blue-400">${c.kmh} <span class="text-xs text-gray-500">km/h</span></span>
+                        </div>
+                        <div class="bg-zinc-900 rounded p-2 text-center border border-zinc-700">
+                            <span class="block text-gray-400 text-xs uppercase mb-1">Moc</span>
+                            <span class="font-mono font-bold text-red-400">${c.hp} <span class="text-xs text-gray-500">KM</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div>${btnHTML}</div>
+            </div>
+        `;
+
+        if (c.category === 'van') {
+            containerVans.appendChild(card);
+        } else {
+            containerCars.appendChild(card);
+        }
+    }
+}
+
+// ==========================================
+// NAWIGACJA UI & LOGOWANIE
+// ==========================================
+const mainMenuScreen = document.getElementById('main-menu-screen');
+const viewMenu = document.getElementById('view-menu');
+const viewGarage = document.getElementById('view-garage');
+const viewLogin = document.getElementById('view-login');
+const viewJobs = document.getElementById('view-jobs');
+const viewRegister = document.getElementById('view-register');
+const viewRanking = document.getElementById('view-ranking');
+const uiLayer = document.getElementById('ui-layer');
+
+const savedNick = localStorage.getItem('SD2D_nick');
+const savedPass = localStorage.getItem('SD2D_pass');
+
+if (savedNick && savedPass) {
+    myNick = savedNick;
+    document.getElementById('player-nick').value = savedNick;
+    document.getElementById('player-pass').value = savedPass;
+    
+    // Auto-login z opóźnieniem by upewnić się, że Firebase zdąży się wczytać
+    const checkAndLoad = async () => {
+        if(window.fbGet) {
+            await loadPlayerProfile();
+            viewLogin.classList.add('hidden');
+            viewMenu.classList.remove('hidden');
+        } else {
+            setTimeout(checkAndLoad, 100);
+        }
+    };
+    checkAndLoad();
+} else {
+    viewMenu.classList.add('hidden');
+    viewLogin.classList.remove('hidden');
+}
+
+document.getElementById('btn-do-login').addEventListener('click', async () => {
+    let nickInput = document.getElementById('player-nick').value.trim();
+    let passInput = document.getElementById('player-pass').value.trim();
+    if(nickInput === '' || passInput === '') {
+        alert('Musisz podać Nick i Hasło!');
+        return;
+    }
+    
+    if (!nickInput.includes('#')) {
+        alert('Podaj pełny nick z numerem (np. Nazwa #1) lub użyj przycisku "Zarejestruj się" aby stworzyć nowe konto.');
+        return;
+    }
+    
+    const btnLogin = document.getElementById('btn-do-login');
+    btnLogin.innerText = "ŁADOWANIE...";
+    btnLogin.disabled = true;
+
+    try {
+        // Logowanie do istniejącego
+        let dbKey = nickInput.replace('#', '_');
+        let userRef = window.fbRef(window.firebaseDb, 'users/' + dbKey);
+        let snap = await window.fbGet(userRef);
+        if (snap.exists()) {
+            let data = snap.val();
+            if (data.pass !== passInput) {
+                alert('Błędne hasło!');
+                btnLogin.innerText = "ZALOGUJ SIĘ";
+                btnLogin.disabled = false;
+                return;
+            }
+            myNick = nickInput;
+        } else {
+            alert('Konto nie istnieje! Użyj przycisku "Zarejestruj się" aby stworzyć nowe.');
+            btnLogin.innerText = "ZALOGUJ SIĘ";
+            btnLogin.disabled = false;
+            return;
+        }
+        
+        localStorage.setItem('SD2D_nick', myNick);
+        localStorage.setItem('SD2D_pass', passInput);
+        
+        await loadPlayerProfile();
+        
+        viewLogin.classList.add('hidden');
+        viewMenu.classList.remove('hidden');
+    } catch(e) {
+        console.error(e);
+        alert('Błąd połączenia z bazą danych!');
+    }
+    
+    btnLogin.innerText = "ZALOGUJ SIĘ";
+    btnLogin.disabled = false;
+});
+
+// Rejestracja
+document.getElementById('btn-goto-register').addEventListener('click', () => {
+    viewLogin.classList.add('hidden');
+    viewRegister.classList.remove('hidden');
+});
+
+document.getElementById('btn-back-from-register').addEventListener('click', () => {
+    viewRegister.classList.add('hidden');
+    viewLogin.classList.remove('hidden');
+});
+
+document.getElementById('btn-do-register').addEventListener('click', async () => {
+    let nickInput = document.getElementById('register-nick').value.trim();
+    let passInput = document.getElementById('register-pass').value.trim();
+    
+    if(nickInput === '' || passInput === '') {
+        alert('Musisz podać Nick i Hasło!');
+        return;
+    }
+    
+    if (nickInput.includes('#')) {
+        alert('Nick nie powinien zawierać znaku #. System doda go automatycznie.');
+        return;
+    }
+    
+    const btnRegister = document.getElementById('btn-do-register');
+    btnRegister.innerText = "TWORZENIE KONTA...";
+    btnRegister.disabled = true;
+
+    try {
+        // Rejestracja nowego konta - użyj getNextUserNumber aby wykorzystać dostępne numery
+        let count = await getNextUserNumber();
+        
+        myNick = nickInput + ' #' + count;
+        let dbKey = myNick.replace('#', '_');
+        
+        await window.fbSet(window.fbRef(window.firebaseDb, 'users/' + dbKey), {
+            pass: passInput,
+            money: 0,
+            mileage: 0,
+            ownedCars: JSON.stringify(['seicento']),
+            currentCar: 'seicento'
+        });
+        
+        localStorage.setItem('SD2D_nick', myNick);
+        localStorage.setItem('SD2D_pass', passInput);
+        
+        alert('Utworzono nowe konto: ' + myNick + '\nZapamiętaj ten Nick do logowania!');
+        
+        await loadPlayerProfile();
+        
+        viewRegister.classList.add('hidden');
+        viewMenu.classList.remove('hidden');
+        
+        document.getElementById('register-nick').value = '';
+        document.getElementById('register-pass').value = '';
+    } catch(e) {
+        console.error(e);
+        alert('Błąd połączenia z bazą danych!');
+    }
+    
+    btnRegister.innerText = "STWÓRZ KONTO";
+    btnRegister.disabled = false;
+});
+
+// Update registration to use available numbers
+async function getNextUserNumber() {
+    let availableRef = window.fbRef(window.firebaseDb, 'global/availableNumbers');
+    let availableSnap = await window.fbGet(availableRef);
+    let available = availableSnap.exists() ? availableSnap.val() : [];
+    
+    if (Array.isArray(available) && available.length > 0) {
+        // Use the first available number
+        let num = available.shift();
+        await window.fbSet(availableRef, available);
+        return num;
+    }
+    
+    // Otherwise increment the counter
+    let countRef = window.fbRef(window.firebaseDb, 'global/userCount');
+    let snap = await window.fbGet(countRef);
+    let count = snap.exists() ? snap.val() : 0;
+    count++;
+    await window.fbSet(countRef, count);
+    return count;
+}
+
+// Ranking
+document.getElementById('btn-goto-ranking').addEventListener('click', () => {
+    viewRanking.classList.remove('hidden');
+    loadRanking('money');
+});
+
+document.getElementById('btn-back-from-ranking').addEventListener('click', () => {
+    viewRanking.classList.add('hidden');
+    viewMenu.classList.remove('hidden');
+});
+
+document.getElementById('ranking-tab-money').addEventListener('click', () => {
+    loadRanking('money');
+    document.getElementById('ranking-tab-money').classList.replace('bg-zinc-700', 'bg-yellow-600');
+    document.getElementById('ranking-tab-mileage').classList.replace('bg-yellow-600', 'bg-zinc-700');
+});
+
+document.getElementById('ranking-tab-mileage').addEventListener('click', () => {
+    loadRanking('mileage');
+    document.getElementById('ranking-tab-mileage').classList.replace('bg-zinc-700', 'bg-yellow-600');
+    document.getElementById('ranking-tab-money').classList.replace('bg-yellow-600', 'bg-zinc-700');
+});
+
+let currentRankingData = [];
+let currentRankingType = 'money';
+
+async function loadRanking(type) {
+    currentRankingType = type;
+    const valueHeader = document.getElementById('ranking-value-header');
+    valueHeader.innerText = type === 'money' ? 'Kasa (PLN)' : 'Przebieg (km)';
+    
+    const rankingList = document.getElementById('ranking-list');
+    rankingList.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-400">Ładowanie...</td></tr>';
+    
+    try {
+        let usersRef = window.fbRef(window.firebaseDb, 'users');
+        let snap = await window.fbGet(usersRef);
+        
+        if (!snap.exists()) {
+            rankingList.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-400">Brak danych</td></tr>';
+            return;
+        }
+        
+        let users = [];
+        snap.forEach(child => {
+            let data = child.val();
+            let nick = child.key.replace(/_/g, '#');
+            // Wszystkie hashtagi mniej widoczne - szare i male
+            // Dziala dla formatu "Nazwa #X" i "Nazwa#X"
+            if (nick.includes('#')) {
+                let parts = nick.split('#');
+                nick = parts[0] + '<span class="text-gray-500 text-xs ml-1">#' + parts[1] + '</span>';
+            }
+            users.push({
+                nick: nick,
+                money: data.money || 0,
+                mileage: data.mileage || 0
+            });
+        });
+        
+        // Sort by selected type
+        users.sort((a, b) => b[type] - a[type]);
+        
+        currentRankingData = users;
+        renderRanking(users, type);
+    } catch(e) {
+        console.error('Ranking load error', e);
+        rankingList.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-red-400">Błąd ładowania</td></tr>';
+    }
+}
+
+function renderRanking(users, type) {
+    const rankingList = document.getElementById('ranking-list');
+    rankingList.innerHTML = '';
+    
+    users.forEach((user, index) => {
+        let value = type === 'money' ? user.money : (user.mileage / 1000).toFixed(2);
+        let valueDisplay = type === 'money' ? value + ' PLN' : value + ' km';
+        
+        let row = document.createElement('tr');
+        row.className = index % 2 === 0 ? 'bg-zinc-800' : 'bg-zinc-900';
+        
+        // Medal for top 3
+        let rankDisplay = index + 1;
+        if (index === 0) rankDisplay = '🥇';
+        else if (index === 1) rankDisplay = '🥈';
+        else if (index === 2) rankDisplay = '🥉';
+        
+        row.innerHTML = `
+            <td class="px-4 py-3 text-yellow-400 font-bold">${rankDisplay}</td>
+            <td class="px-4 py-3 text-white">${user.nick.replace(' #', '<span class="text-gray-500 text-xs ml-1">#')}${user.nick.includes('#') ? '</span>' : ''}</td>
+            <td class="px-4 py-3 ${type === 'money' ? 'text-yellow-400' : 'text-green-400'} text-right font-mono">${valueDisplay}</td>
+        `;
+        rankingList.appendChild(row);
+    });
+}
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+    localStorage.removeItem('SD2D_nick');
+    localStorage.removeItem('SD2D_pass');
+    document.getElementById('player-pass').value = '';
+    viewMenu.classList.add('hidden');
+    viewLogin.classList.remove('hidden');
+});
+
+document.getElementById('btn-goto-garage').addEventListener('click', () => {
+    renderGarage();
+    viewMenu.classList.add('hidden');
+    viewGarage.classList.remove('hidden');
+});
+
+document.getElementById('btn-back-from-garage').addEventListener('click', () => {
+    viewGarage.classList.add('hidden');
+    viewMenu.classList.remove('hidden');
+});
+
+document.getElementById('btn-goto-jobs').addEventListener('click', () => {
+    viewMenu.classList.add('hidden');
+    viewJobs.classList.remove('hidden');
+});
+
+document.getElementById('btn-back-from-jobs').addEventListener('click', () => {
+    viewJobs.classList.add('hidden');
+    viewMenu.classList.remove('hidden');
+});
+
+document.getElementById('btn-open-menu').addEventListener('click', openMenuFromGame);
+document.getElementById('btn-open-jobs-ingame').addEventListener('click', openJobsFromGame);
+document.getElementById('btn-open-ranking-ingame').addEventListener('click', openRankingFromGame);
+
+function openMenuFromGame() {
+    gameActive = false;
+    uiLayer.classList.add('hidden');
+    if(isMobile) document.getElementById('mobile-controls').style.display = 'none';
+    mainMenuScreen.classList.remove('hidden');
+    viewMenu.classList.remove('hidden');
+    viewGarage.classList.add('hidden');
+    viewJobs.classList.add('hidden');
+    viewLogin.classList.add('hidden');
+    viewRegister.classList.add('hidden');
+    viewRanking.classList.add('hidden');
+}
+
+function openJobsFromGame() {
+    gameActive = false;
+    uiLayer.classList.add('hidden');
+    if(isMobile) document.getElementById('mobile-controls').style.display = 'none';
+    mainMenuScreen.classList.remove('hidden');
+    viewMenu.classList.add('hidden');
+    viewGarage.classList.add('hidden');
+    viewJobs.classList.remove('hidden');
+    viewLogin.classList.add('hidden');
+    viewRegister.classList.add('hidden');
+    viewRanking.classList.add('hidden');
+}
+
+function openRankingFromGame() {
+    // Pokaz ranking jako overlay bez wychodzenia z gry
+    viewRanking.classList.remove('hidden');
+    loadRanking('money');
+}
+
+// Funkcja do zamykania rankingu - sprawdza czy jestesmy w grze czy w menu
+document.getElementById('btn-back-from-ranking').addEventListener('click', () => {
+    viewRanking.classList.add('hidden');
+});
+
+window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() === 'm' && !uiLayer.classList.contains('hidden')) openMenuFromGame();
+    if (e.key.toLowerCase() === 'r' && !uiLayer.classList.contains('hidden')) openJobsFromGame();
+    if (e.key.toLowerCase() === 't' && !uiLayer.classList.contains('hidden')) openRankingFromGame();
+    if (e.key === 'Escape' && !viewRanking.classList.contains('hidden')) viewRanking.classList.add('hidden');
+});
+
+// ==========================================
+// KONFIGURACJA MAPY
+// ==========================================
+const mapCenter = [52.290128, 21.547967];
+const map = L.map('map', {
+    center: mapCenter,
+    zoom: 19,
+    minZoom: 17,
+    maxZoom: 20,
+    zoomControl: false,
+    dragging: false,
+    scrollWheelZoom: true,
+    doubleClickZoom: false
+});
+
+L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    attribution: '© Google'
+}).addTo(map);
+
+const borderCoords = [
+    [52.298889, 21.522278],
+    [52.299278, 21.559222],
+    [52.280944, 21.554194],
+    [52.281992, 21.527378]
+];
+
+L.polygon(borderCoords, {
+    color: '#ef4444',
+    weight: 3,
+    dashArray: '10, 10',
+    fillOpacity: 0.05
+}).addTo(map);
+
+// ==========================================
+// SYSTEM MISJI (PIZZERIA & KURIER)
+// ==========================================
+const pizzeriaCoords = [52.290500, 21.548500];
+const warehouseCoords = [52.289030, 21.547392];
+
+const pizzeriaIconHTML = `
+<div style="display: flex; align-items: center; justify-content: flex-end; width: max-content; transform: translate(calc(-100% + 16px), -38px);">
+    <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 6px;">
+        <span style="color: white; font-weight: 500; font-size: 16px; font-family: Roboto, Arial, sans-serif; line-height: 1.1; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">Pizzeria Rimini</span>
+    </div>
+    <div style="width: 32px; height: 38px; background-color: #f27a24; border: 2px solid white; display: flex; align-items: center; justify-content: center; border-radius: 5px;">🍕</div>
+</div>`;
+L.marker(pizzeriaCoords, { icon: L.divIcon({ className: 'custom-poi-marker', html: pizzeriaIconHTML, iconSize: [0, 0] }) }).addTo(map);
+
+const warehouseIconHTML = `
+<div style="display: flex; align-items: center; justify-content: flex-end; width: max-content; transform: translate(calc(-100% + 16px), -38px);">
+    <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 6px;">
+        <span style="color: white; font-weight: 500; font-size: 16px; font-family: Roboto, Arial, sans-serif; line-height: 1.1; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">Poczta Polska</span>
+    </div>
+    <div style="width: 32px; height: 38px; background-color: #2563eb; border: 2px solid white; display: flex; align-items: center; justify-content: center; border-radius: 5px;">✉️</div>
+</div>`;
+L.marker(warehouseCoords, { icon: L.divIcon({ className: 'custom-poi-marker', html: warehouseIconHTML, iconSize: [0, 0] }) }).addTo(map);
+
+let missionActive = false;
+let missionDestination = null;
+let missionReward = 0;
+let deliveryMarker = null;
+let missionLine = null;
+let canPickup = false;
+let canDeliver = false;
+
+function getRandomDestination() {
+    const minLat = 52.281992, maxLat = 52.298889;
+    const minLng = 21.522278, maxLng = 21.559222;
+    let dest = null;
+    while (!dest) {
+        let lat = minLat + Math.random() * (maxLat - minLat);
+        let lng = minLng + Math.random() * (maxLng - minLng);
+        if (isPointInPolygon([lat, lng], borderCoords)) dest = [lat, lng];
+    }
+    return dest;
+}
+
+window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() === 'e' && gameActive) {
+        handleInteraction();
+    }
+});
+
+document.getElementById('btn-interact').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (gameActive) handleInteraction();
+});
+document.getElementById('btn-interact').addEventListener('click', (e) => {
+    if (gameActive) handleInteraction();
+});
+
+function handleInteraction() {
+    if (canPickup && !missionActive) startMission();
+    else if (canDeliver && missionActive) finishMission(false);
+}
+
+function updateMissionLogic() {
+    let carLatLng = L.latLng(car.lat, car.lng);
+    let activeBaseCoords = myJob === 'kurier' ? warehouseCoords : pizzeriaCoords;
+    let actionText = myJob === 'kurier' ? "paczki" : "pizzę";
+    let requiredCategory = myJob === 'kurier' ? 'van' : 'auto';
+    let currentCategory = carDefs[myCarType] ? carDefs[myCarType].category : 'auto';
+    
+    let isCorrectVehicle = requiredCategory === currentCategory;
+
+    if (!missionActive) {
+        let distToBase = carLatLng.distanceTo(L.latLng(activeBaseCoords));
+        if (distToBase < 20) {
+            if (isCorrectVehicle) {
+                canPickup = true;
+                document.getElementById('interaction-prompt').classList.remove('hidden');
+                document.getElementById('interaction-prompt').classList.replace('border-red-500', 'border-orange-500');
+                document.getElementById('interaction-text').innerText = isMobile ? `Odbierz ${actionText}` : `Naciśnij [E] aby odebrać ${actionText}`;
+                if(isMobile) document.getElementById('btn-interact').classList.remove('hidden');
+            } else {
+                canPickup = false;
+                document.getElementById('interaction-prompt').classList.remove('hidden');
+                document.getElementById('interaction-prompt').classList.replace('border-orange-500', 'border-red-500');
+                document.getElementById('interaction-text').innerText = `Potrzebujesz ${requiredCategory.toUpperCase()} do tej pracy!`;
+                if(isMobile) document.getElementById('btn-interact').classList.add('hidden');
+            }
+        } else {
+            canPickup = false;
+            document.getElementById('interaction-prompt').classList.add('hidden');
+            if(isMobile) document.getElementById('btn-interact').classList.add('hidden');
+        }
+    } else {
+        let distToDest = carLatLng.distanceTo(L.latLng(missionDestination));
+        if (missionLine) missionLine.setLatLngs([[car.lat, car.lng], missionDestination]);
+        
+        if (distToDest < 15) {
+            canDeliver = true;
+            document.getElementById('interaction-prompt').classList.remove('hidden');
+            document.getElementById('interaction-text').innerText = isMobile ? `Oddaj ${actionText}` : `Naciśnij [E] aby oddać ${actionText}`;
+            document.getElementById('interaction-prompt').classList.replace('border-orange-500', 'border-green-500');
+            document.getElementById('interaction-prompt').classList.replace('border-red-500', 'border-green-500');
+            if(isMobile) document.getElementById('btn-interact').classList.remove('hidden');
+        } else {
+            canDeliver = false;
+            document.getElementById('interaction-prompt').classList.add('hidden');
+            document.getElementById('interaction-prompt').classList.replace('border-green-500', 'border-orange-500');
+            if(isMobile) document.getElementById('btn-interact').classList.add('hidden');
+        }
+    }
+}
+
+function startMission() {
+    missionDestination = getRandomDestination();
+    let activeBaseCoords = myJob === 'kurier' ? warehouseCoords : pizzeriaCoords;
+    let rawDist = map.distance(activeBaseCoords, missionDestination);
+    missionReward = Math.floor(150 + Math.min(550, (rawDist / 2000) * 550));
+    missionActive = true;
+    canPickup = false;
+    
+    let titleText = myJob === 'kurier' ? 'Dostawa Paczki' : 'Dostawa Pizzy';
+    document.getElementById('interaction-prompt').classList.add('hidden');
+    if(isMobile) document.getElementById('btn-interact').classList.add('hidden');
+    
+    document.getElementById('mission-status').classList.remove('hidden');
+    document.getElementById('mission-title').innerText = titleText;
+    document.getElementById('mission-desc').innerText = `Dostarcz pod adres!\nNagroda: ~${missionReward} PLN`;
+    
+    const destIconHTML = `<div style="width: 24px; height: 24px; background-color: #22c55e; border: 2px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(34,197,94,0.8);"></div>`;
+    deliveryMarker = L.marker(missionDestination, {
+        icon: L.divIcon({ className: 'custom-dest-marker', html: destIconHTML, iconSize: [24, 24], iconAnchor: [12, 12] })
+    }).addTo(map);
+    
+    missionLine = L.polyline([[car.lat, car.lng], missionDestination], {
+        color: myJob === 'kurier' ? '#3b82f6' : '#f97316',
+        weight: 6, opacity: 0.8, dashArray: '15, 15', className: 'glowing-line'
+    }).addTo(map);
+}
+
+function finishMission(cancelled = false) {
+    missionActive = false;
+    canDeliver = false;
+    missionDestination = null;
+    
+    document.getElementById('interaction-prompt').classList.add('hidden');
+    if(isMobile) document.getElementById('btn-interact').classList.add('hidden');
+    document.getElementById('mission-status').classList.add('hidden');
+    
+    if (deliveryMarker) { map.removeLayer(deliveryMarker); deliveryMarker = null; }
+    if (missionLine) { map.removeLayer(missionLine); missionLine = null; }
+    
+    if(!cancelled) {
+        myMoney += missionReward;
+        localStorage.setItem('SD2D_money_' + myNick, myMoney);
+        document.getElementById('ui-money').innerText = myMoney + ' PLN';
+        window.saveToFirebase();
+        
+        document.getElementById('interaction-prompt').classList.remove('hidden');
+        document.getElementById('interaction-prompt').classList.replace('border-orange-500', 'border-green-500');
+        document.getElementById('interaction-text').innerText = `Zarobiono! +${missionReward} PLN`;
+        
+        setTimeout(() => {
+            document.getElementById('interaction-prompt').classList.add('hidden');
+            document.getElementById('interaction-prompt').classList.replace('border-green-500', 'border-orange-500');
+        }, 3000);
+    }
+}
+
+function isPointInPolygon(point, vs) {
+    let x = point[0], y = point[1];
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i][0], yi = vs[i][1];
+        let xj = vs[j][0], yj = vs[j][1];
+        let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+// ==========================================
+// KONFIGURACJA CANVAS & FIZYKA AUTA
+// ==========================================
+const canvas = document.getElementById('canvas-layer');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Mobile button states
+let mobileBtnStates = {
+    left: false,
+    right: false,
+    gas: false,
+    brake: false,
+    drift: false
+};
+
+let keys = {};
+window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase())) e.preventDefault();
+});
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+// Mobile touch controls setup
+if (isMobile) {
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnGas = document.getElementById('btn-gas');
+    const btnBrake = document.getElementById('btn-brake');
+    const btnDrift = document.getElementById('btn-drift');
+    const btnInteract = document.getElementById('btn-interact');
+
+    // Left arrow
+    btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); mobileBtnStates.left = true; });
+    btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); mobileBtnStates.left = false; });
+    btnLeft.addEventListener('touchcancel', (e) => { e.preventDefault(); mobileBtnStates.left = false; });
+
+    // Right arrow
+    btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); mobileBtnStates.right = true; });
+    btnRight.addEventListener('touchend', (e) => { e.preventDefault(); mobileBtnStates.right = false; });
+    btnRight.addEventListener('touchcancel', (e) => { e.preventDefault(); mobileBtnStates.right = false; });
+
+    // Gas pedal
+    btnGas.addEventListener('touchstart', (e) => { e.preventDefault(); mobileBtnStates.gas = true; });
+    btnGas.addEventListener('touchend', (e) => { e.preventDefault(); mobileBtnStates.gas = false; });
+    btnGas.addEventListener('touchcancel', (e) => { e.preventDefault(); mobileBtnStates.gas = false; });
+
+    // Brake pedal
+    btnBrake.addEventListener('touchstart', (e) => { e.preventDefault(); mobileBtnStates.brake = true; });
+    btnBrake.addEventListener('touchend', (e) => { e.preventDefault(); mobileBtnStates.brake = false; });
+    btnBrake.addEventListener('touchcancel', (e) => { e.preventDefault(); mobileBtnStates.brake = false; });
+
+    // Drift button
+    btnDrift.addEventListener('touchstart', (e) => { e.preventDefault(); mobileBtnStates.drift = true; });
+    btnDrift.addEventListener('touchend', (e) => { e.preventDefault(); mobileBtnStates.drift = false; });
+    btnDrift.addEventListener('touchcancel', (e) => { e.preventDefault(); mobileBtnStates.drift = false; });
+
+    // Interact button
+    btnInteract.addEventListener('touchstart', (e) => { e.preventDefault(); if (gameActive) handleInteraction(); });
+    btnInteract.addEventListener('click', (e) => { if (gameActive) handleInteraction(); });
+}
+
+let skidmarks = [];
+let lastSkidPoint = null;
+let lastTime = performance.now();
+
+function updatePhysics(dt, time) {
+    let isAccelerating = keys['w'] || keys['arrowup'] || mobileBtnStates.gas;
+    let isBraking = keys['s'] || keys['arrowdown'] || mobileBtnStates.brake;
+    car.isDrifting = keys['p'] || mobileBtnStates.drift;
+    
+    let joyAccelFactor = mobileBtnStates.gas ? 1 : (keys['w'] || keys['arrowup'] ? 1 : 0);
+    let joyBrakeFactor = mobileBtnStates.brake ? 1 : (keys['s'] || keys['arrowdown'] ? 1 : 0);
+
+    if (isAccelerating) car.speed += car.accel * dt * joyAccelFactor;
+    else if (isBraking) car.speed -= car.brake * dt * joyBrakeFactor;
+    else car.speed *= (1 - 0.4 * dt);
+
+    if (car.speed > car.maxSpeed) car.speed = car.maxSpeed;
+    if (car.speed < -car.maxSpeed/2) car.speed = -car.maxSpeed/2;
+
+    if (Math.abs(car.speed) > 1) {
+        let turnSpeed = car.isDrifting ? 130 : 80;
+        let dir = car.speed > 0 ? 1 : -1;
+        let factor = dir * Math.min(1.0, Math.abs(car.speed) / (car.maxSpeed * 0.5));
+        
+        let turnInput = 0;
+        if (mobileBtnStates.left) turnInput = -1;
+        else if (mobileBtnStates.right) turnInput = 1;
+        else if (keys['a'] || keys['arrowleft']) turnInput = -1;
+        else if (keys['d'] || keys['arrowright']) turnInput = 1;
+
+        car.angle += turnSpeed * dt * factor * turnInput;
+    }
+
+    let angleDiff = car.angle - car.moveAngle;
+    while (angleDiff > 180) angleDiff -= 360;
+    while (angleDiff < -180) angleDiff += 360;
+
+    let grip = car.isDrifting ? 1.5 : 8.0;
+    car.moveAngle += angleDiff * Math.min(grip * dt, 1.0);
+
+    let rad = car.moveAngle * Math.PI / 180;
+    let R = 6378137;
+    let distanceThisFrame = Math.abs(car.speed * dt);
+    car.distanceMeters += distanceThisFrame;
+
+    let dLat = (car.speed * dt * Math.cos(rad)) / R * (180 / Math.PI);
+    let dLng = (car.speed * dt * Math.sin(rad)) / (R * Math.cos(car.lat * Math.PI / 180)) * (180 / Math.PI);
+    
+    let nextLat = car.lat + dLat;
+    let nextLng = car.lng + dLng;
+
+    if (isPointInPolygon([nextLat, nextLng], borderCoords)) {
+        car.lat = nextLat;
+        car.lng = nextLng;
+    } else {
+        car.speed *= -0.4;
+    }
+
+    if (Math.abs(car.speed) > 5 && (car.isDrifting || Math.abs(angleDiff) > 15)) {
+        let rLat = car.lat - (5 * Math.cos(car.angle * Math.PI/180)) / 111320;
+        let rLng = car.lng - (5 * Math.sin(car.angle * Math.PI/180)) / (111320 * Math.cos(car.lat * Math.PI/180));
+        if (lastSkidPoint) skidmarks.push({ p1: lastSkidPoint, p2: {lat: rLat, lng: rLng}, opacity: 0.8 });
+        lastSkidPoint = {lat: rLat, lng: rLng};
+    } else {
+        lastSkidPoint = null;
+    }
+
+    map.setView([car.lat, car.lng], map.getZoom(), {animate: false});
+    
+    let maxKmhLimit = carDefs[myCarType] ? carDefs[myCarType].kmh : 140;
+    let kmh = Math.min(maxKmhLimit, Math.abs(Math.round(car.speed * 3.6)));
+    
+    document.getElementById('speed-val').innerText = kmh;
+    document.getElementById('speed-bar').style.width = (kmh / maxKmhLimit * 100) + '%';
+    
+    if(kmh > maxKmhLimit * 0.8) document.getElementById('speed-bar').classList.replace('bg-blue-500', 'bg-red-500');
+    else document.getElementById('speed-bar').classList.replace('bg-red-500', 'bg-blue-500');
+    
+    let km = (car.distanceMeters / 1000).toFixed(2);
+    document.getElementById('ui-distance').innerText = km + ' km';
+    localStorage.setItem('SD2D_mileage_' + myNick, car.distanceMeters);
+}
+
+function drawCar(ctx, x, y, angle, colorMain, colorRoof) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle * Math.PI / 180);
+    
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 3;
+    
+    ctx.fillStyle = colorMain;
+    ctx.fillRect(-12, -24, 24, 48);
+    
+    ctx.shadowColor = 'transparent';
+    ctx.fillStyle = '#171717';
+    ctx.fillRect(-12, -26, 24, 4);
+    ctx.fillRect(-12, 24, 24, 4);
+    
+    ctx.fillStyle = colorRoof;
+    ctx.fillRect(-10, -12, 20, 26);
+    
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(-9, -16, 18, 6);
+    ctx.fillRect(-9, 14, 18, 5);
+    
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(-10, -25, 6, 3);
+    ctx.fillRect(4, -25, 6, 3);
+    
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(-10, 25, 6, 2);
+    ctx.fillRect(4, 25, 6, 2);
+    
+    ctx.restore();
+}
+
+function drawRenderer() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    for (let i = skidmarks.length - 1; i >= 0; i--) {
+        let mark = skidmarks[i];
+        let p1 = map.latLngToContainerPoint([mark.p1.lat, mark.p1.lng]);
+        let p2 = map.latLngToContainerPoint([mark.p2.lat, mark.p2.lng]);
+        
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = `rgba(10, 10, 10, ${mark.opacity})`;
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        
+        mark.opacity -= 0.003;
+        if (mark.opacity <= 0) skidmarks.splice(i, 1);
+    }
+    
+    let myDef = carDefs[myCarType] || carDefs['seicento'];
+    let carPos = map.latLngToContainerPoint([car.lat, car.lng]);
+    if(carPos) drawCar(ctx, carPos.x, carPos.y, car.angle, myDef.colorMain, myDef.colorRoof);
+}
+
+let animationFrameId;
+function gameLoop(time) {
+    if(!gameActive) return;
+    let dt = (time - lastTime) / 1000;
+    if (dt > 0.1) dt = 0.1;
+    lastTime = time;
+    
+    updatePhysics(dt, time);
+    updateMissionLogic();
+    drawRenderer();
+    
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+// ==========================================
+// WEJŚCIE DO GRY
+// ==========================================
+function enterGame() {
+    if(!myNick || myNick.trim() === '') {
+        alert('Błąd logowania!');
+        return;
+    }
+    
+    let selectedDef = carDefs[myCarType] || carDefs['seicento'];
+    car.maxSpeed = selectedDef.maxSpeed;
+    car.accel = selectedDef.accel;
+    
+    mainMenuScreen.classList.add('hidden');
+    uiLayer.classList.remove('hidden');
+    if (isMobile) document.getElementById('mobile-controls').style.display = 'block';
+    
+    map.invalidateSize();
+    map.setView([car.lat, car.lng], map.getZoom());
+    
+    let savedDistance = localStorage.getItem('SD2D_mileage_' + myNick);
+    if (savedDistance) car.distanceMeters = parseFloat(savedDistance);
+    else car.distanceMeters = 0;
+    
+    if (!gameActive) {
+        gameActive = true;
+        lastTime = performance.now();
+        cancelAnimationFrame(animationFrameId);
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+document.getElementById('btn-play').addEventListener('click', enterGame);
+</script>
 </body>
 </html>
