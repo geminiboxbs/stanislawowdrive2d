@@ -1000,8 +1000,10 @@ async function loadRanking(type) {
             let data = child.val();
             let nick = child.key.replace(/_/g, '#');
             // Wszystkie hashtagi mniej widoczne - szare i male
+            // Dziala dla formatu "Nazwa #X" i "Nazwa#X"
             if (nick.includes('#')) {
-                nick = nick.replace(' #', '<span class="text-gray-500 text-xs ml-1">#') + '</span>';
+                let parts = nick.split('#');
+                nick = parts[0] + '<span class="text-gray-500 text-xs ml-1">#' + parts[1] + '</span>';
             }
             users.push({
                 nick: nick,
