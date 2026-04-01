@@ -129,31 +129,43 @@
         }
         .pedals-area {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
+            flex-direction: row;
+            gap: 8px;
+            align-items: flex-end;
             position: absolute;
             right: 20px;
             bottom: 20px;
         }
-        .action-area {
+        .drift-area {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            align-items: flex-start;
+            gap: 8px;
+            align-items: center;
             position: absolute;
-            left: 170px;
+            right: 180px;
             bottom: 20px;
         }
         .drift-btn {
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             background: rgba(168, 85, 247, 0.5);
             border: 2px solid rgba(168, 85, 247, 0.8);
             border-radius: 50%;
-            font-size: 14px;
+            font-size: 12px;
         }
         .drift-btn:active {
             background: rgba(168, 85, 247, 0.8);
+        }
+        .interact-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(34, 197, 94, 0.6);
+            border: 2px solid rgba(34, 197, 94, 0.8);
+            border-radius: 50%;
+            font-size: 14px;
+        }
+        .interact-btn:active {
+            background: rgba(34, 197, 94, 0.9);
         }
         .gas-pedal {
             background: rgba(34, 197, 94, 0.5);
@@ -231,51 +243,57 @@
         /* Adjust HUD for mobile (landscape and portrait) */
         @media (max-width: 950px), (max-height: 500px) {
             #btn-open-menu {
-                padding: 0.3rem 0.6rem;
-                font-size: 0.7rem;
-                top: 0.5rem;
-                left: 0.5rem;
+                padding: 0.2rem 0.4rem;
+                font-size: 0.6rem;
+                top: 0.3rem;
+                left: 0.3rem;
             }
             #btn-open-jobs-ingame {
-                padding: 0.3rem 0.6rem;
-                font-size: 0.7rem;
-                top: 2.8rem;
-                left: 0.5rem;
+                padding: 0.2rem 0.4rem;
+                font-size: 0.6rem;
+                top: 2.2rem;
+                left: 0.3rem;
+            }
+            #btn-open-ranking-ingame {
+                padding: 0.2rem 0.4rem;
+                font-size: 0.6rem;
+                top: 3.9rem;
+                left: 0.3rem;
             }
             .hud-status-box {
-                top: 0.5rem;
-                right: 0.5rem;
-                width: 150px;
-                padding: 0.4rem;
+                top: 0.3rem;
+                right: 0.3rem;
+                width: 120px;
+                padding: 0.3rem;
             }
             #speed-val {
-                font-size: 1.5rem;
+                font-size: 1.2rem;
             }
             .hud-status-box .text-sm {
-                font-size: 0.65rem;
+                font-size: 0.55rem;
             }
             .hud-status-box .text-xl {
-                font-size: 0.8rem;
+                font-size: 0.7rem;
             }
             #mission-status {
-                top: 5.1rem;
-                left: 0.5rem;
-                width: 150px;
-                padding: 0.4rem;
+                top: 4.5rem;
+                left: 0.3rem;
+                width: 120px;
+                padding: 0.3rem;
             }
             #mission-title {
-                font-size: 0.8rem;
+                font-size: 0.7rem;
                 margin-bottom: 0.1rem;
             }
             #mission-desc {
-                font-size: 0.65rem;
+                font-size: 0.55rem;
             }
             #interaction-prompt {
-                bottom: 15px;
-                padding: 0.4rem 0.8rem;
+                bottom: 10px;
+                padding: 0.3rem 0.6rem;
             }
             #interaction-text {
-                font-size: 0.85rem;
+                font-size: 0.75rem;
             }
         }
     </style>
@@ -490,13 +508,13 @@
             <div class="mobile-btn arrow-btn" id="btn-left"><</div>
             <div class="mobile-btn arrow-btn" id="btn-right">></div>
         </div>
+        <div class="drift-area">
+            <div class="mobile-btn drift-btn" id="btn-drift">DRIFT</div>
+            <div class="mobile-btn interact-btn hidden" id="btn-interact">OK</div>
+        </div>
         <div class="pedals-area">
             <div class="mobile-btn pedal-btn gas-pedal" id="btn-gas">GAZ</div>
             <div class="mobile-btn pedal-btn brake-pedal" id="btn-brake">HAM</div>
-        </div>
-        <div class="action-area">
-            <div class="mobile-btn drift-btn" id="btn-drift">DRIFT</div>
-            <div class="mobile-btn interact-btn hidden" id="btn-interact">OK</div>
         </div>
     </div>
 </div>
@@ -575,9 +593,6 @@ let car = {
     maxSpeed: 38.8, accel: 6.0, brake: 15,
     isDrifting: false, distanceMeters: 0
 };
-
-// Konfiguracja - wpisz tu swojego nicka (bez numeru), aby miec #2 w rankingu
-const CURRENT_USER_NICK = 'Bartek'; // Zmien na swoj nick
 
 // Mobile Detection
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -984,8 +999,10 @@ async function loadRanking(type) {
         snap.forEach(child => {
             let data = child.val();
             let nick = child.key.replace(/_/g, '#');
-            // Twarda zmiana: TheBartvs #2 wyswietla jako TheBartvs #1
-            if (nick === 'TheBartvs #2') nick = 'TheBartvs #1';
+            // Wszystkie hashtagi mniej widoczne - szare i male
+            if (nick.includes('#')) {
+                nick = nick.replace(' #', '<span class="text-gray-500 text-xs ml-1">#') + '</span>';
+            }
             users.push({
                 nick: nick,
                 money: data.money || 0,
